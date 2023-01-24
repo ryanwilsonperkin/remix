@@ -103,6 +103,7 @@ const createEsbuildConfig = (
   let outputCss = isCssBuild;
 
   let plugins: esbuild.Plugin[] = [
+    config.plugins || null,
     deprecatedRemixPackagePlugin(options.onWarning),
     isCssBundlingEnabled(config) && isCssBuild
       ? cssBundleEntryModulePlugin(config)

@@ -2,6 +2,7 @@ import * as path from "path";
 import { pathToFileURL } from "url";
 import * as fse from "fs-extra";
 import getPort from "get-port";
+import type {Plugin} from 'esbuild';
 
 import type { RouteManifest, DefineRoutesFunction } from "./config/routes";
 import { defineRoutes } from "./config/routes";
@@ -169,6 +170,11 @@ export interface AppConfig {
     | (() => Promise<string | string[]> | string | string[]);
 
   future?: Partial<FutureConfig>;
+
+  /**
+   * Additional esbuild plugins to use
+   */
+  plugins?: Plugin[];
 }
 
 /**
@@ -289,6 +295,11 @@ export interface RemixConfig {
   tsconfigPath: string | undefined;
 
   future: FutureConfig;
+
+  /**
+   * Additional esbuild plugins to use
+   */
+  plugins: Plugin[];
 }
 
 /**
@@ -501,6 +512,8 @@ export async function readConfig(
     v2_routeConvention: appConfig.future?.v2_routeConvention === true,
   };
 
+  let plugins = appConfig.plugins || [];
+
   return {
     appDirectory,
     cacheDirectory,
@@ -525,6 +538,7 @@ export async function readConfig(
     watchPaths,
     tsconfigPath,
     future,
+    plugins,
   };
 }
 

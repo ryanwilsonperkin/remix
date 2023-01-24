@@ -55,6 +55,7 @@ const createEsbuildConfig = (
   let outputCss = false;
 
   let plugins: esbuild.Plugin[] = [
+    config.plugins || null,
     deprecatedRemixPackagePlugin(options.onWarning),
     config.future.unstable_cssModules
       ? cssModulesPlugin({ mode, rootDirectory, outputCss })
