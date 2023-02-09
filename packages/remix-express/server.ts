@@ -57,7 +57,8 @@ export function createRequestHandler({
 
       let response = (await handleRequest(
         request,
-        loadContext
+        loadContext,
+        res.writeEarlyHints.bind(res),
       )) as NodeResponse;
 
       await sendRemixResponse(res, response);
