@@ -31,7 +31,8 @@ import { createServerHandoffString } from "./serverHandoff";
 
 export type RequestHandler = (
   request: Request,
-  loadContext?: AppLoadContext
+  loadContext?: AppLoadContext,
+  writeEarlyHints?: (hints: {link: string | string[]}) => void,
 ) => Promise<Response>;
 
 export type CreateRequestHandlerFunction = (
@@ -48,7 +49,7 @@ export const createRequestHandler: CreateRequestHandlerFunction = (
   let serverMode = isServerMode(mode) ? mode : ServerMode.Production;
   let staticHandler = createStaticHandler(dataRoutes);
 
-  return async function requestHandler(request, loadContext = {}) {
+  return async function requestHandler(request, loadContext = {}, writeEarlyHints = () => {}) {
     let url = new URL(request.url);
 
     // special __REMIX_ASSETS_MANIFEST endpoint for checking if app server serving up-to-date routes and assets
@@ -103,6 +104,13 @@ export const createRequestHandler: CreateRequestHandlerFunction = (
         loadContext
       );
     } else {
+      let rootLinks = build.routes["root"].module.links?.() ?? [];
+      let routeLinks = matches?.[matches.length - 1]?.route.module.links?.() ?? [];
+      let linkHints = [...rootLinks, routeLinks]
+        .filter(link => link.href)
+        .map(link => `<${link.href}>; rel=preload`);
+      if (linkHints.length) writeEarlyHints({link: linkHints});
+
       response = await handleDocumentRequestRR(
         serverMode,
         build,
