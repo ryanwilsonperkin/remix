@@ -13,7 +13,7 @@ Remix comes with several pre-built session storage options for common scenarios,
 - `createCookieSessionStorage`
 - `createMemorySessionStorage`
 - `createFileSessionStorage` (node)
-- `createCloudflareKVSessionStorage` (cloudflare-workers)
+- `createWorkersKVSessionStorage` (Cloudflare Workers)
 - `createArcTableSessionStorage` (architect, Amazon DynamoDB)
 - custom storage with `createSessionStorage`
 
@@ -21,35 +21,45 @@ Remix comes with several pre-built session storage options for common scenarios,
 
 This is an example of a cookie session storage:
 
-```js filename=app/sessions.js
-// app/sessions.js
+```ts filename=app/sessions.ts
+// app/sessions.ts
 import { createCookieSessionStorage } from "@remix-run/node"; // or cloudflare/deno
 
-const { getSession, commitSession, destroySession } =
-  createCookieSessionStorage({
-    // a Cookie from `createCookie` or the CookieOptions to create one
-    cookie: {
-      name: "__session",
+type SessionData = {
+  userId: string;
+};
 
-      // all of these are optional
-      domain: "remix.run",
-      // Expires can also be set (although maxAge overrides it when used in combination).
-      // Note that this method is NOT recommended as `new Date` creates only one date on each server deployment, not a dynamic date in the future!
-      //
-      // expires: new Date(Date.now() + 60_000),
-      httpOnly: true,
-      maxAge: 60,
-      path: "/",
-      sameSite: "lax",
-      secrets: ["s3cret1"],
-      secure: true,
-    },
-  });
+type SessionFlashData = {
+  error: string;
+};
+
+const { getSession, commitSession, destroySession } =
+  createCookieSessionStorage<SessionData, SessionFlashData>(
+    {
+      // a Cookie from `createCookie` or the CookieOptions to create one
+      cookie: {
+        name: "__session",
+
+        // all of these are optional
+        domain: "remix.run",
+        // Expires can also be set (although maxAge overrides it when used in combination).
+        // Note that this method is NOT recommended as `new Date` creates only one date on each server deployment, not a dynamic date in the future!
+        //
+        // expires: new Date(Date.now() + 60_000),
+        httpOnly: true,
+        maxAge: 60,
+        path: "/",
+        sameSite: "lax",
+        secrets: ["s3cret1"],
+        secure: true,
+      },
+    }
+  );
 
 export { getSession, commitSession, destroySession };
 ```
 
-We recommend setting up your session storage object in `app/sessions.js` so all routes that need to access session data can import from the same spot (also, see our [Route Module Constraints][constraints]).
+We recommend setting up your session storage object in `app/sessions.ts` so all routes that need to access session data can import from the same spot (also, see our [Route Module Constraints][constraints]).
 
 The input/output to a session storage object are HTTP cookies. `getSession()` retrieves the current session from the incoming request's `Cookie` header, and `commitSession()`/`destroySession()` provide the `Set-Cookie` header for the outgoing response.
 
@@ -330,16 +340,16 @@ const { getSession, commitSession, destroySession } =
 export { getSession, commitSession, destroySession };
 ```
 
-## `createCloudflareKVSessionStorage` (cloudflare-workers)
+## `createWorkersKVSessionStorage` (Cloudflare Workers)
 
-For [Cloudflare KV][cloudflare-kv] backed sessions, use `createCloudflareKVSessionStorage()`.
+For [Cloudflare Workers KV][cloudflare-kv] backed sessions, use `createWorkersKVSessionStorage()`.
 
 The advantage of KV backed sessions is that only the session ID is stored in the cookie while the rest of the data is stored in a globally replicated, low-latency data store with exceptionally high read volumes with low-latency.
 
 ```js filename=app/sessions.server.js
 import {
   createCookie,
-  createCloudflareKVSessionStorage,
+  createWorkersKVSessionStorage,
 } from "@remix-run/cloudflare";
 
 // In this example the Cookie is created separately.
@@ -349,7 +359,7 @@ const sessionCookie = createCookie("__session", {
 });
 
 const { getSession, commitSession, destroySession } =
-  createCloudflareKVSessionStorage({
+  createWorkersKVSessionStorage({
     // The KV Namespace where you want to store sessions
     kv: YOUR_NAMESPACE,
     cookie: sessionCookie,

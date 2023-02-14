@@ -45,33 +45,27 @@ const createEsbuildConfig = (
     };
   }
 
-  let isCloudflareRuntime = ["cloudflare-pages", "cloudflare-workers"].includes(
-    config.serverBuildTarget ?? ""
-  );
-  let isDenoRuntime = config.serverBuildTarget === "deno";
-
   let { mode } = options;
-  let { rootDirectory } = config;
   let outputCss = false;
 
   let plugins: esbuild.Plugin[] = [
     ...config.plugins,
     deprecatedRemixPackagePlugin(options.onWarning),
     config.future.unstable_cssModules
-      ? cssModulesPlugin({ mode, rootDirectory, outputCss })
+      ? cssModulesPlugin({ config, mode, outputCss })
       : null,
     config.future.unstable_vanillaExtract
       ? vanillaExtractPlugin({ config, mode, outputCss })
       : null,
     config.future.unstable_cssSideEffectImports
-      ? cssSideEffectImportsPlugin({ rootDirectory })
+      ? cssSideEffectImportsPlugin({ config, options })
       : null,
-    cssFilePlugin({ mode, rootDirectory }),
+    cssFilePlugin({ config, options }),
     urlImportsPlugin(),
     mdxPlugin(config),
     emptyModulesPlugin(config, /\.client(\.[jt]sx?)?$/),
     serverRouteModulesPlugin(config),
-    serverEntryModulePlugin(config),
+    serverEntryModulePlugin(config, { liveReloadPort: options.liveReloadPort }),
     serverAssetsManifestPlugin(assetsManifestChannel.read()),
     serverBareModulesPlugin(config, options.onWarning),
   ].filter(isNotNull);
@@ -85,11 +79,7 @@ const createEsbuildConfig = (
     stdin,
     entryPoints,
     outfile: config.serverBuildPath,
-    conditions: isCloudflareRuntime
-      ? ["worker"]
-      : isDenoRuntime
-      ? ["deno", "worker"]
-      : undefined,
+    conditions: config.serverConditions,
     platform: config.serverPlatform,
     format: config.serverModuleFormat,
     treeShaking: true,
@@ -101,12 +91,8 @@ const createEsbuildConfig = (
     // PR makes dev mode behave closer to production in terms of dead
     // code elimination / tree shaking is concerned.
     minifySyntax: true,
-    minify: options.mode === "production" && isCloudflareRuntime,
-    mainFields: isCloudflareRuntime
-      ? ["browser", "module", "main"]
-      : config.serverModuleFormat === "esm"
-      ? ["module", "main"]
-      : ["main", "module"],
+    minify: options.mode === "production" && config.serverMinify,
+    mainFields: config.serverMainFields,
     target: options.target,
     loader: loaders,
     bundle: true,
